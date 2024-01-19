@@ -2,6 +2,127 @@
 
 All notable changes to this project will be documented in this file.
 
+### [4.0.2](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v4.0.1...v4.0.2) (2023-05-15)
+
+
+### Bug Fixes
+
+* Add dns64 routes ([#924](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/924)) ([743798d](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/743798daa14b8a5b827b37053ca7e3c5b8865c06))
+
+### [4.0.1](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v4.0.0...v4.0.1) (2023-04-07)
+
+
+### Bug Fixes
+
+* Add missing private subnets to max subnet length local ([#920](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/920)) ([6f51f34](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/6f51f34d9c91d62984ff985aad6b5ef03eb2a75a))
+
+## [4.0.0](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.19.0...v4.0.0) (2023-04-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* Support enabling NAU metrics in "aws_vpc" resource (#838)
+
+### Features
+
+* Support enabling NAU metrics in "aws_vpc" resource ([#838](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/838)) ([44e6eaa](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/44e6eaa154a9e78c8d6e86d1c735f95825b270db))
+
+## [3.19.0](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.18.1...v3.19.0) (2023-01-13)
+
+
+### Features
+
+* Add public and private tags per az ([#860](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/860)) ([a82c9d3](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/a82c9d3272e3a83d22f70f174133dd26c24eee21))
+
+
+### Bug Fixes
+
+* Use a version for  to avoid GitHub API rate limiting on CI workflows ([#876](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/876)) ([2a0319e](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/2a0319ec3244169997c6dac0d7850897ba9b9162))
+
+### [3.18.1](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.18.0...v3.18.1) (2022-10-27)
+
+
+### Bug Fixes
+
+* Update CI configuration files to use latest version ([#850](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/850)) ([b94561d](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/b94561dc61b8bbedb5e36e0334e030edf03a1c7b))
+
+## [3.18.0](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.17.0...v3.18.0) (2022-10-21)
+
+
+### Features
+
+* Added ability to specify CloudWatch Log group name for VPC Flow logs ([#847](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/847)) ([80d6318](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/80d631884126075e1adbe2d410f46ef6b9ea8a19))
+
+## [3.17.0](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.16.1...v3.17.0) (2022-10-21)
+
+
+### Features
+
+* Add custom subnet names ([#816](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/816)) ([4416e37](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/4416e379ed9a9b650a12a629441410f326b44c0c))
+
+### [3.16.1](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.16.0...v3.16.1) (2022-10-14)
+
+
+### Bug Fixes
+
+* Prevent an error when VPC Flow log log_group and role is not created ([#844](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/844)) ([b0c81ad](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/b0c81ad61214069f8fa6d35492716c9d4cac9096))
+
+## [3.16.0](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.15.0...v3.16.0) (2022-09-26)
+
+
+### Features
+
+* Add IPAM IPv6 support ([#718](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/718)) ([4fe7745](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/4fe7745ddb675af3bd50daf335ad3ffa16d08a98))
+
+## [3.15.0](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.14.4...v3.15.0) (2022-09-25)
+
+
+### Features
+
+* Add IPAM IPv4 support ([#716](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/716)) ([6eddcad](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/6eddcad72867cd9df536d13ea8fdac15e0eebbd4))
+
+### [3.14.4](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.14.3...v3.14.4) (2022-09-05)
+
+
+### Bug Fixes
+
+* Remove EC2-classic deprecation warnings by hardcoding classiclink values to `null` ([#826](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/826)) ([736931b](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/736931b0a707115a1fbeb45e0d6f784199cba95e))
+
+### [3.14.3](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.14.2...v3.14.3) (2022-09-02)
+
+
+### Bug Fixes
+
+* Allow `security_group_ids` to take `null` values ([#825](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/825)) ([67ef09a](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/67ef09a1717f155d9a2f22a867230bf872af4cef))
+
+### [3.14.2](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.14.1...v3.14.2) (2022-06-20)
+
+
+### Bug Fixes
+
+* Compact CIDR block outputs to avoid empty diffs ([#802](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/802)) ([c3fd156](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/c3fd1566df23cc4a2d3447b1964956964b9830a3))
+
+### [3.14.1](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.14.0...v3.14.1) (2022-06-16)
+
+
+### Bug Fixes
+
+* Declare data resource only for requested VPC endpoints ([#800](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/800)) ([024fbc0](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/024fbc01bf468240213666dfd4428f5b425794d1))
+
+## [3.14.0](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.13.0...v3.14.0) (2022-03-31)
+
+
+### Features
+
+* Change to allow create variable within specific vpc objects ([#773](https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/773)) ([5913d7e](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/5913d7ebe9805c8c5f39a7afb6b28bf1c4e9505e))
+
+## [3.13.0](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.12.0...v3.13.0) (2022-03-11)
+
+
+### Features
+
+* Made it clear that we stand with Ukraine ([acb0ae5](https://github.com/terraform-aws-modules/terraform-aws-vpc/commit/acb0ae548d7c6dd0594565c7a6087f65b4c45f93))
+
 ## [3.12.0](https://github.com/terraform-aws-modules/terraform-aws-vpc/compare/v3.11.5...v3.12.0) (2022-02-07)
 
 

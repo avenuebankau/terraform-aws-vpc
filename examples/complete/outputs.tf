@@ -314,7 +314,7 @@ output "redshift_route_table_association_ids" {
 }
 
 output "redshift_public_route_table_association_ids" {
-  description = "List of IDs of the public redshidt route table association"
+  description = "List of IDs of the public redshift route table association"
   value       = module.vpc.redshift_public_route_table_association_ids
 }
 
@@ -532,4 +532,10 @@ output "vpc_flow_log_destination_type" {
 output "vpc_flow_log_cloudwatch_iam_role_arn" {
   description = "The ARN of the IAM role used when pushing logs to Cloudwatch log group"
   value       = module.vpc.vpc_flow_log_cloudwatch_iam_role_arn
+}
+
+# VPC endpoints
+output "vpc_endpoints" {
+  description = "Array containing the full resource object and attributes for all endpoints created"
+  value       = module.vpc_endpoints.endpoints
 }
