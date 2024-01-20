@@ -1199,6 +1199,12 @@ variable "firewall_log_tags" {
   default     = {}
 }
 
+variable "firewall_network_cidr" {
+  description = "CIDR to forward network traffic to"
+  type        = string
+  default     = null
+}
+
 ################################################################################
 # Firewall Network ACLs
 ################################################################################
@@ -1256,6 +1262,25 @@ variable "enable_firewall" {
   type        = bool
   default     = false
 }
+
+variable "enable_firewall_deletion_protection" {
+  description = "Should be true if you want to prevent the network firewall from being deleted"
+  type        = bool
+  default     = false
+}
+
+variable "enable_firewall_policy_change_protection" {
+  description = "Should be true if you want to prevent the associated network firewall policy from being changed"
+  type        = bool
+  default     = false
+}
+
+variable "enable_firewall_subnet_change_protection" {
+  description = "Should be true if you want to prevent the network firewall associated subnets being change"
+  type        = bool
+  default     = true
+}
+
 
 variable "firewall_policy_arn" {
   description = "The network firewall policy arn to associate with the network firewall. Needed if you are setting enable_firewall to true"
