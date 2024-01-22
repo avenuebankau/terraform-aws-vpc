@@ -4,8 +4,20 @@ locals {
     length(var.elasticache_subnets),
     length(var.database_subnets),
     length(var.redshift_subnets),
+    length(var.firewall_subnets),
   )
+
   nat_gateway_count = var.single_nat_gateway ? 1 : var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length
+
+  # Creates a set of endpoint ids ordered by availability zone based on the order of var.azs
+  # even when var.azs is not lexicographically ordered, e.g azs = ["us-east-1b", "us-east-1a"]
+  firewall_sync_states = var.enable_firewall ? aws_networkfirewall_firewall.this[0].firewall_status[0].sync_states : []
+  firewall_endpoint_ids_ordered_by_azs = flatten([for az in var.azs :
+    [for sszone, ssid in {
+      # Creates a map of az to firewall vpces e.g {"us-east-1a" = "vpce-xxxx", "us-east-1b"= "vpce-yyyy"}
+      for ss in tolist(local.firewall_sync_states) :
+      ss.availability_zone => ss.attachment[0].endpoint_id
+  } : ssid if sszone == az]])
 
   # Use `local.vpc_id` to give a hint to Terraform that subnets should be deleted before secondary CIDR blocks can be free!
   vpc_id = try(aws_vpc_ipv4_cidr_block_association.this[0].vpc_id, aws_vpc.this[0].id, "")
@@ -111,6 +123,25 @@ resource "aws_vpc_dhcp_options_association" "this" {
   dhcp_options_id = aws_vpc_dhcp_options.this[0].id
 }
 
+###################
+# Network Firewall
+###################
+resource "aws_networkfirewall_firewall" "this" {
+  count = var.create_vpc && var.enable_firewall && length(var.firewall_subnets) > 0 ? 1 : 0
+
+  name                = format("%s-%s", var.name, var.firewall_suffix)
+  firewall_policy_arn = var.firewall_policy_arn
+  vpc_id              = element(concat(aws_vpc.this.*.id, [""]), 0)
+
+  dynamic "subnet_mapping" {
+    for_each = { for i, subnet in aws_subnet.firewall.* : i => subnet.id }
+
+    content {
+      subnet_id = subnet_mapping.value
+    }
+  }
+}
+
 ################################################################################
 # Internet Gateway
 ################################################################################
@@ -185,24 +216,42 @@ resource "aws_default_route_table" "default" {
 ################################################################################
 
 resource "aws_route_table" "public" {
-  count = var.create_vpc && length(var.public_subnets) > 0 ? 1 : 0
+  count = var.create_vpc && length(var.public_subnets) > 0 ? var.enable_firewall ? length(var.firewall_subnets) : 1 : 0
 
   vpc_id = local.vpc_id
 
   tags = merge(
-    { "Name" = "${var.name}-${var.public_subnet_suffix}" },
+    {
+      "Name" = var.enable_firewall ? format(
+        "%s-%s-%s",
+        var.name,
+        var.public_subnet_suffix,
+        element(var.azs, count.index),
+      ) : "${var.name}-${var.public_subnet_suffix}"
+    },
     var.tags,
     var.public_route_table_tags,
   )
 }
 
 resource "aws_route" "public_internet_gateway" {
-  count = var.create_vpc && var.create_igw && length(var.public_subnets) > 0 ? 1 : 0
+  count = var.create_vpc && var.create_igw && length(var.public_subnets) > 0 && !(var.enable_firewall && length(var.firewall_subnets) > 0) ? 1 : 0
 
-  route_table_id         = aws_route_table.public[0].id
+  route_table_id         = aws_route_table.public[count.index].id
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.this[0].id
 
+  timeouts {
+    create = "5m"
+  }
+}
+
+resource "aws_route" "public_firewall" {
+  count = var.create_vpc && var.enable_firewall ? length(var.public_subnets) : 0
+
+  route_table_id         = element(aws_route_table.public.*.id, count.index)
+  destination_cidr_block = "0.0.0.0/0"
+  vpc_endpoint_id        = element(local.firewall_endpoint_ids_ordered_by_azs, count.index)
   timeouts {
     create = "5m"
   }
@@ -293,6 +342,56 @@ resource "aws_route" "database_ipv6_egress" {
   timeouts {
     create = "5m"
   }
+}
+
+################################################################################
+# Firewall routes
+################################################################################
+resource "aws_route_table" "firewall" {
+  count = var.create_vpc && var.create_firewall_subnet_route_table && length(var.firewall_subnets) > 0 ? 1 : 0
+
+  vpc_id = local.vpc_id
+
+  tags = merge(
+    {
+      "Name" = "${var.name}-${var.firewall_subnet_suffix}"
+    },
+    var.tags,
+    var.firewall_route_table_tags,
+  )
+}
+
+resource "aws_route" "firewall_internet_gateway" {
+  count = var.create_vpc && var.create_igw && length(var.firewall_subnets) > 0 ? 1 : 0
+
+  route_table_id         = aws_route_table.firewall[count.index].id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.this[0].id
+
+  timeouts {
+    create = "5m"
+  }
+}
+
+resource "aws_route_table" "internet_gateway" {
+  count  = var.create_vpc && var.enable_firewall && length(var.firewall_subnets) > 0 ? 1 : 0
+  vpc_id = local.vpc_id
+
+  tags = merge(
+    {
+      "Name" = format("%s-internet-gateway-${var.firewall_subnet_suffix}", var.name)
+    },
+    var.tags,
+    var.public_route_table_tags,
+  )
+}
+
+resource "aws_route" "internet_gateway_firewall" {
+  count = var.create_vpc && var.enable_firewall && length(var.firewall_subnets) > 0 ? length(var.public_subnets) : 0
+
+  route_table_id         = aws_route_table.internet_gateway[0].id
+  destination_cidr_block = aws_subnet.public[count.index].cidr_block
+  vpc_endpoint_id        = element(local.firewall_endpoint_ids_ordered_by_azs, count.index)
 }
 
 ################################################################################
@@ -577,6 +676,34 @@ resource "aws_subnet" "intra" {
     var.intra_subnet_tags,
   )
 }
+
+################################################################################
+# Firewall subnet
+################################################################################
+resource "aws_subnet" "firewall" {
+  count = var.create_vpc && length(var.firewall_subnets) > 0 ? length(var.firewall_subnets) : 0
+
+  vpc_id                          = local.vpc_id
+  cidr_block                      = var.firewall_subnets[count.index]
+  availability_zone               = length(regexall("^[a-z]{2}-", element(var.azs, count.index))) > 0 ? element(var.azs, count.index) : null
+  availability_zone_id            = length(regexall("^[a-z]{2}-", element(var.azs, count.index))) == 0 ? element(var.azs, count.index) : null
+  assign_ipv6_address_on_creation = var.firewall_subnet_assign_ipv6_address_on_creation == null ? var.assign_ipv6_address_on_creation : var.firewall_subnet_assign_ipv6_address_on_creation
+
+  ipv6_cidr_block = var.enable_ipv6 && length(var.firewall_subnet_ipv6_prefixes) > 0 ? cidrsubnet(aws_vpc.this[0].ipv6_cidr_block, 8, var.firewall_subnet_ipv6_prefixes[count.index]) : null
+
+  tags = merge(
+    {
+      "Name" = format(
+        "%s-${var.firewall_subnet_suffix}-%s",
+        var.name,
+        element(var.azs, count.index),
+      )
+    },
+    var.tags,
+    var.firewall_subnet_tags,
+  )
+}
+
 
 ################################################################################
 # Default Network ACLs
@@ -989,6 +1116,56 @@ resource "aws_network_acl_rule" "elasticache_outbound" {
 }
 
 ################################################################################
+# Firewall Network ACLs
+################################################################################
+resource "aws_network_acl" "firewall" {
+  count = var.create_vpc && var.firewall_dedicated_network_acl && length(var.firewall_subnets) > 0 ? 1 : 0
+
+  vpc_id     = element(concat(aws_vpc.this.*.id, [""]), 0)
+  subnet_ids = aws_subnet.firewall.*.id
+
+  tags = merge(
+    {
+      "Name" = format("%s-${var.firewall_subnet_suffix}", var.name)
+    },
+    var.tags,
+    var.firewall_acl_tags,
+  )
+}
+
+resource "aws_network_acl_rule" "firewall_inbound" {
+  count = var.create_vpc && var.firewall_dedicated_network_acl && length(var.firewall_subnets) > 0 ? length(var.firewall_inbound_acl_rules) : 0
+
+  network_acl_id = aws_network_acl.firewall[0].id
+
+  egress      = false
+  rule_number = var.firewall_inbound_acl_rules[count.index]["rule_number"]
+  rule_action = var.firewall_inbound_acl_rules[count.index]["rule_action"]
+  from_port   = var.firewall_inbound_acl_rules[count.index]["from_port"]
+  to_port     = var.firewall_inbound_acl_rules[count.index]["to_port"]
+  icmp_code   = lookup(var.firewall_inbound_acl_rules[count.index], "icmp_code", null)
+  icmp_type   = lookup(var.firewall_inbound_acl_rules[count.index], "icmp_type", null)
+  protocol    = var.firewall_inbound_acl_rules[count.index]["protocol"]
+  cidr_block  = var.firewall_inbound_acl_rules[count.index]["cidr_block"]
+}
+
+resource "aws_network_acl_rule" "firewall_outbound" {
+  count = var.create_vpc && var.firewall_dedicated_network_acl && length(var.firewall_subnets) > 0 ? length(var.firewall_outbound_acl_rules) : 0
+
+  network_acl_id = aws_network_acl.firewall[0].id
+
+  egress      = true
+  rule_number = var.firewall_outbound_acl_rules[count.index]["rule_number"]
+  rule_action = var.firewall_outbound_acl_rules[count.index]["rule_action"]
+  from_port   = var.firewall_outbound_acl_rules[count.index]["from_port"]
+  to_port     = var.firewall_outbound_acl_rules[count.index]["to_port"]
+  icmp_code   = lookup(var.firewall_outbound_acl_rules[count.index], "icmp_code", null)
+  icmp_type   = lookup(var.firewall_outbound_acl_rules[count.index], "icmp_type", null)
+  protocol    = var.firewall_outbound_acl_rules[count.index]["protocol"]
+  cidr_block  = var.firewall_outbound_acl_rules[count.index]["cidr_block"]
+}
+
+################################################################################
 # NAT Gateway
 ################################################################################
 
@@ -1043,7 +1220,7 @@ resource "aws_route" "private_nat_gateway" {
   count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
 
   route_table_id         = element(aws_route_table.private[*].id, count.index)
-  destination_cidr_block = "0.0.0.0/0"
+  destination_cidr_block = var.nat_gateway_destination_cidr_block
   nat_gateway_id         = element(aws_nat_gateway.this[*].id, count.index)
 
   timeouts {
@@ -1136,9 +1313,28 @@ resource "aws_route_table_association" "intra" {
 resource "aws_route_table_association" "public" {
   count = var.create_vpc && length(var.public_subnets) > 0 ? length(var.public_subnets) : 0
 
-  subnet_id      = element(aws_subnet.public[*].id, count.index)
-  route_table_id = aws_route_table.public[0].id
+  subnet_id = element(aws_subnet.public[*].id, count.index)
+  route_table_id = element(
+    aws_route_table.public[*].id,
+    var.enable_firewall ? count.index : 0,
+  )
 }
+
+resource "aws_route_table_association" "public_internet_gateway" {
+  count = var.create_vpc && var.create_igw && var.enable_firewall && length(var.firewall_subnets) > 0 ? 1 : 0
+
+  gateway_id     = aws_internet_gateway.this[0].id
+  route_table_id = aws_route_table.internet_gateway[0].id
+}
+
+resource "aws_route_table_association" "firewall" {
+  count = var.create_vpc && length(var.firewall_subnets) > 0 ? length(var.firewall_subnets) : 0
+
+  subnet_id      = element(aws_subnet.firewall.*.id, count.index)
+  route_table_id = aws_route_table.firewall[0].id
+
+}
+
 
 ################################################################################
 # Customer Gateways

@@ -64,6 +64,12 @@ variable "intra_subnet_ipv6_prefixes" {
   default     = []
 }
 
+variable "firewall_subnet_ipv6_prefixes" {
+  description = "Assigns IPv6 firewall subnet id based on the Amazon provided /56 prefix base 10 integer (0-256). Must be of equal length to the corresponding IPv4 subnet list"
+  type        = list(string)
+  default     = []
+}
+
 variable "assign_ipv6_address_on_creation" {
   description = "Assign IPv6 address on subnet, must be disabled to change IPv6 CIDRs. This is the IPv6 equivalent of map_public_ip_on_launch"
   type        = bool
@@ -108,6 +114,12 @@ variable "elasticache_subnet_assign_ipv6_address_on_creation" {
 
 variable "intra_subnet_assign_ipv6_address_on_creation" {
   description = "Assign IPv6 address on intra subnet, must be disabled to change IPv6 CIDRs. This is the IPv6 equivalent of map_public_ip_on_launch"
+  type        = bool
+  default     = null
+}
+
+variable "firewall_subnet_assign_ipv6_address_on_creation" {
+  description = "Assign IPv6 address on firewall subnet, must be disabled to change IPv6 CIDRs. This is the IPv6 equivalent of map_public_ip_on_launch"
   type        = bool
   default     = null
 }
@@ -166,6 +178,12 @@ variable "elasticache_subnet_suffix" {
   default     = "elasticache"
 }
 
+variable "firewall_subnet_suffix" {
+  description = "Suffix to append to firewall subnets name"
+  type        = string
+  default     = "firewall"
+}
+
 variable "public_subnets" {
   description = "A list of public subnets inside the VPC"
   type        = list(string)
@@ -208,6 +226,12 @@ variable "intra_subnets" {
   default     = []
 }
 
+variable "firewall_subnets" {
+  description = "A list of firewall subnets inside the VPC, note that the number of firewall subnets must be less than or equal to the number of availability zones"
+  type        = list(string)
+  default     = []
+}
+
 variable "create_database_subnet_route_table" {
   description = "Controls if separate route table for database should be created"
   type        = bool
@@ -218,6 +242,12 @@ variable "create_redshift_subnet_route_table" {
   description = "Controls if separate route table for redshift should be created"
   type        = bool
   default     = false
+}
+
+variable "create_firewall_subnet_route_table" {
+  description = "Controls if route table for firewall should be created"
+  type        = bool
+  default     = true
 }
 
 variable "enable_public_redshift" {
@@ -292,10 +322,34 @@ variable "enable_classiclink_dns_support" {
   default     = null
 }
 
+variable "enable_firewall" {
+  description = "Should be true if you want to provision a network firewall in front of your public networks"
+  type        = bool
+  default     = false
+}
+
+variable "firewall_policy_arn" {
+  description = "The network firewall policy arn to associate with the network firewall. Needed if you are setting enable_firewall to true"
+  type        = string
+  default     = null
+}
+
+variable "firewall_suffix" {
+  description = "The suffix that should be appended to the firewall name"
+  type        = string
+  default     = "firewall"
+}
+
 variable "enable_nat_gateway" {
   description = "Should be true if you want to provision NAT Gateways for each of your private networks"
   type        = bool
   default     = false
+}
+
+variable "nat_gateway_destination_cidr_block" {
+  description = "Used to pass a custom destination route for private NAT Gateway. If not specified, the default 0.0.0.0/0 is used as a destination route."
+  type        = string
+  default     = "0.0.0.0/0"
 }
 
 variable "single_nat_gateway" {
@@ -484,6 +538,12 @@ variable "intra_route_table_tags" {
   default     = {}
 }
 
+variable "firewall_route_table_tags" {
+  description = "Additional tags for the firewall route tables"
+  type        = map(string)
+  default     = {}
+}
+
 variable "database_subnet_group_name" {
   description = "Name of database subnet group"
   type        = string
@@ -544,6 +604,12 @@ variable "intra_subnet_tags" {
   default     = {}
 }
 
+variable "firewall_subnet_tags" {
+  description = "Additional tags for the firewall subnets"
+  type        = map(string)
+  default     = {}
+}
+
 variable "public_acl_tags" {
   description = "Additional tags for the public subnets network ACL"
   type        = map(string)
@@ -582,6 +648,18 @@ variable "redshift_acl_tags" {
 
 variable "elasticache_acl_tags" {
   description = "Additional tags for the elasticache subnets network ACL"
+  type        = map(string)
+  default     = {}
+}
+
+variable "firewall_acl_tags" {
+  description = "Additional tags for the firewall subnets network ACL"
+  type        = map(string)
+  default     = {}
+}
+
+variable "firewall_log_tags" {
+  description = "Additional tags for the Firewall Logs"
   type        = map(string)
   default     = {}
 }
@@ -756,6 +834,12 @@ variable "redshift_dedicated_network_acl" {
 
 variable "elasticache_dedicated_network_acl" {
   description = "Whether to use dedicated network ACL (not default) and custom rules for elasticache subnets"
+  type        = bool
+  default     = false
+}
+
+variable "firewall_dedicated_network_acl" {
+  description = "Whether to use dedicated network ACL (not default) and custom rules for firewall subnets"
   type        = bool
   default     = false
 }
@@ -1032,6 +1116,38 @@ variable "elasticache_outbound_acl_rules" {
   ]
 }
 
+variable "firewall_inbound_acl_rules" {
+  description = "firewall subnets inbound network ACL rules"
+  type        = list(map(string))
+
+  default = [
+    {
+      rule_number = 100
+      rule_action = "allow"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_block  = "0.0.0.0/0"
+    },
+  ]
+}
+
+variable "firewall_outbound_acl_rules" {
+  description = "Firewall subnets outbound network ACL rules"
+  type        = list(map(string))
+
+  default = [
+    {
+      rule_number = 100
+      rule_action = "allow"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_block  = "0.0.0.0/0"
+    },
+  ]
+}
+
 variable "manage_default_security_group" {
   description = "Should be true to adopt and manage default security group"
   type        = bool
@@ -1054,6 +1170,36 @@ variable "enable_flow_log" {
   description = "Whether or not to enable VPC Flow Logs"
   type        = bool
   default     = false
+}
+
+variable "enable_firewall_logs" {
+  description = "Whether or not to enable Network Firewall Logs"
+  type        = bool
+  default     = false
+}
+
+variable "firewall_log_cloudwatch_log_group_name_prefix" {
+  description = "Specifies the name prefix of Network Firewall Log Group for Network Firewall logs."
+  type        = string
+  default     = "/aws/network-firewall-log/"
+}
+
+variable "firewall_log_cloudwatch_log_group_retention_in_days" {
+  description = "Specifies the number of days you want to retain log events in the specified log group for Network Firewall logs."
+  type        = number
+  default     = 120
+}
+
+variable "firewall_log_cloudwatch_log_group_kms_key_id" {
+  description = "The ARN of the KMS Key to use when encrypting log data for Network Firewall logs."
+  type        = string
+  default     = null
+}
+
+variable "firewall_log_types" {
+  description = "The Types of Network Firewall Logs to send"
+  type        = list(string)
+  default     = ["FLOW", "ALERT"]
 }
 
 variable "default_security_group_egress" {
