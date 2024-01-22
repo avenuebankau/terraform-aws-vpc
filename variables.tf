@@ -1300,6 +1300,29 @@ variable "enable_firewall_logs" {
   default     = false
 }
 
+variable "firewall_logs_destination" {
+  description = "Whether or not to enable Network Firewall Logs"
+  type        = string
+  default     = "CloudWatchLogs"
+  // validate values are S3 or CloudWatchLogs
+  validation {
+    condition     = can(regex("^CloudWatchLogs$|^S3$", var.firewall_logs_destination))
+    error_message = "firewall_logs_destination must be either CloudWatchLogs or S3"
+  }
+}
+
+variable "firewall_log_s3_bucket_name" {
+  description = "Specifies the bucket name for Network Firewall logs."
+  type        = string
+  default     = null
+}
+
+variable "firewall_log_s3_bucket_prefix" {
+  description = "Specifies the bucket prefix for Network Firewall logs."
+  type        = string
+  default     = null
+}
+
 variable "firewall_log_cloudwatch_log_group_name_prefix" {
   description = "Specifies the name prefix of Network Firewall Log Group for Network Firewall logs."
   type        = string
@@ -1309,7 +1332,7 @@ variable "firewall_log_cloudwatch_log_group_name_prefix" {
 variable "firewall_log_cloudwatch_log_group_retention_in_days" {
   description = "Specifies the number of days you want to retain log events in the specified log group for Network Firewall logs."
   type        = number
-  default     = 120
+  default     = 90
 }
 
 variable "firewall_log_cloudwatch_log_group_kms_key_id" {
