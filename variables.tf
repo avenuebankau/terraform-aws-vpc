@@ -1301,7 +1301,7 @@ variable "enable_firewall_logs" {
 }
 
 variable "firewall_logs_destination" {
-  description = "Whether or not to enable Network Firewall Logs"
+  description = "Where to send Network Firewall Logs to"
   type        = string
   default     = "CloudWatchLogs"
   // validate values are S3 or CloudWatchLogs
