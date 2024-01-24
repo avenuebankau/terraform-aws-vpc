@@ -170,8 +170,7 @@ resource "aws_route_table_association" "firewall" {
 }
 
 resource "aws_route" "public_internet_gateway" {
-#  count = local.create_public_subnets && var.create_igw && !(var.enable_firewall && length(var.firewall_subnets) > 0) ? 1 : 0
-  count = local.create_public_subnets && var.create_igw ? 1 : 0
+  count = local.create_public_subnets && var.create_igw ? var.enable_firewall ? length(var.firewall_subnets) : 1 : 0
 
   route_table_id         = aws_route_table.public[count.index].id
   destination_cidr_block = "0.0.0.0/0"
